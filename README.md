@@ -6,7 +6,7 @@ Ansible collection for managing and automtaic Cisco Container Platform ( CCP ).
 Requirements
 ------------
 
-No special requirements
+- No special requirements
 
 Plugin Variables
 --------------
