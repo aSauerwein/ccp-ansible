@@ -1,18 +1,72 @@
-Role Name
+ccp Ansible Collection
 =========
 
-A brief description of the role goes here.
+Ansible collection for managing and automtaic Cisco Container Platform ( CCP ).
 
 Requirements
 ------------
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+No special requirements
 
-Role Variables
+Plugin Variables
 --------------
-
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
-
+```
+options:
+    version:
+        description:
+            - WHich API Version to use. Valid Values 2, 3
+        required: true
+        type: str
+    resource_path:
+        description:
+            - Resource URI being configured related to api_uri.
+        required: true
+        type: str
+    base_url:
+        description:
+            - Base URL of the API i.e. the https://[CCP-IP]
+        required: true
+        type: str
+    username:
+        description:
+            - Username for CCP
+        required: false
+        type: str
+    password:
+        description:
+            - Password for CCP
+        required: false
+        type: str
+    api_body:
+        description:
+            - The payload for API requests used to modify resources.
+        required: false
+        type: dict
+    query_params:
+        description:
+            - query params appended to the URL
+        required: false
+        type: dict
+    validate_certs:
+        description:
+            - define if certs should be validated
+        required: false
+        default: true
+        type: bool
+    filter:
+        description:
+            - filters the returned values on given field
+            - i.e. if filter { name: test } the first object with the name test will be returned
+        required: false
+        default: {}
+        type: dict
+    state:
+        description:
+        - If C(present), will verify the resource is present and will create if needed.
+        - If C(absent), will verify the resource is absent and will delete if needed.
+        choices: [present, absent]
+        default: present
+```
 Dependencies
 ------------
 
@@ -21,11 +75,8 @@ A list of other roles hosted on Galaxy should go here, plus any details in regar
 Example Playbook
 ----------------
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+There is an example Playbook in the Playbooks folder.
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
 
 License
 -------

@@ -1,0 +1,135 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  # debugger: on_failed
+  vars_files:
+    - defaults/main.yml
+  module_defaults:
+    # Create an anchor for api_info that can be used throughout the file
+    ccp:
+        base_url: "{{ ccp_base_url }}"
+        username: "{{ ccp_username }}"
+        password: "{{ ccp_password }}"
+        validate_certs: "{{ ccp_validate_certs }}"
+  tasks:
+    - name:  Get Provider
+      ccp:
+        resource_path: "/providers/"
+        version: 3
+        state: present
+        filter:
+          name: "{{ ccp_provider_name }}"
+      register: providers
+    - name:  Get Datacenter
+      ccp:
+        resource_path: "/providers/{{ providers['api_response']['id'] }}/datacenters/"
+        version: 3
+        state: present
+        filter:
+          name: "{{ ccp_datacenter_name }}"
+      register: datacenters
+    - name:  Get Cluster
+      ccp:
+        resource_path: "/providers/{{ providers['api_response']['id'] }}/clusters/"
+        query_params:
+          datacenter: "{{ datacenters['api_response'] }}"
+        version: 3
+        state: present
+        filter:
+          name: "{{ ccp_datacenter_cluster_name }}"
+      register: clusters
+    - name:  Get Datastore
+      ccp:
+        resource_path: "/providers/{{ providers['api_response']['id'] }}/datastores/"
+        query_params:
+          datacenter: "{{ datacenters['api_response'] }}"
+        version: 3
+        state: present
+        filter:
+          name: "{{ ccp_datacenter_datastore_name }}"
+      register: datastores
+    - name:  Get Networks
+      ccp:
+        resource_path: "/providers/{{ providers['api_response']['id'] }}/networks/"
+        query_params:
+          datacenter: "{{ datacenters['api_response'] }}"
+        version: 3
+        state: present
+        filter:
+          name: "{{ ccp_datacenter_network_name }}"
+      register: networks
+    - name:  Get Subnets
+      ccp:
+        resource_path: "/network_service/subnets"
+        version: 2
+        state: present
+        filter:
+          name: "{{ ccp_subnet_name }}"
+      register: subnets
+    - name:  Get Vms
+      ccp:
+        resource_path: "/providers/{{ providers['api_response']['id'] }}/vms/"
+        query_params:
+          datacenter: "{{ datacenters['api_response'] }}"
+        filter:
+          name: "{{ ccp_datacenter_vm_name }}"
+        version: 3
+        state: present
+      register: vms
+    - name:  Create Cluster
+      register: new_cluster
+      ccp:
+        resource_path: /clusters/
+        version: 3
+        state: present
+        api_body:
+          name: "{{ ccp_cluster_name }}"
+          load_balancer_num: "{{ ccp_cluster_lb_num }}"
+          master_group:
+            memory_mb: "{{ ccp_cluster_master_group_memory_mb }}"
+            name: "{{ ccp_cluster_master_group_name }}"
+            kubernetes_version: "{{ ccp_cluster_kubernetes_version }}"
+            size: "{{ ccp_cluster_master_group_size }}"
+            ssh_key: "{{ ccp_ssh_key }}"
+            ssh_user: "{{ ccp_ssh_user }}"
+            template: "{{ ccp_tenant_image }}"
+            vcpus: "{{ ccp_cluster_master_group_vcpus }}"
+          network_plugin_profile:
+            details:
+              pod_cidr: "{{ ccp_cluster_network_pod_cidr }}"
+            name: "{{ ccp_cluster_network_name }}"
+          node_groups:
+            - gpus: []
+              kubernetes_version: "{{ ccp_cluster_kubernetes_version }}"
+              memory_mb: 16384
+              name: node-group
+              size: 1
+              ssh_key: "{{ ccp_ssh_key }}"
+              ssh_user: "{{ ccp_ssh_user }}"
+              template: "{{ ccp_tenant_image }}"
+              vcpus: 2
+          ntp_servers:
+            - "{{ ccp_ntp_server }}"
+          provider: "{{ providers['api_response']['id'] }}"
+          subnet_id: "{{ subnets['api_response']['uuid'] }}"
+          type: vsphere
+          ip_allocation_method: ccpnet
+          vsphere_infra:
+            cluster: "{{ clusters['api_response'] }}"
+            datacenter: "{{ datacenters['api_response'] }}"
+            datastore: "{{ datastores['api_response'] }}"
+            networks: 
+              - "{{ networks['api_response'] }}"
+    - name:  Get Kubeconfig
+      ccp:
+        resource_path: "/clusters/{{ new_cluster['api_response']['id'] }}/"
+        version: 3
+      register: cluster_config
+      until: cluster_config['api_response']['kubeconfig']
+      retries: 5
+      delay: 30
+    - name:  Copy Kubeconfig to file
+      copy:
+        content: "{{ cluster_config['api_response']['kubeconfig'] }}"
+        dest: "{{ new_cluster['api_response']['name'] }}-kubeconfig.yaml"
